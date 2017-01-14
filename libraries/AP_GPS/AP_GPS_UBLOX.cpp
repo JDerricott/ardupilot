@@ -762,6 +762,12 @@ AP_GPS_UBLOX::_parse_gps(void)
             _ublox_port = _buffer.prt.portID;
             if (!_protocols_configured) {
 			    _configure_protocols();
+                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO,
+                     "u-blox %d CFG-PRT portID %d [r%d m%d b%d i%d o%d m%d]", state.instance,
+                     _buffer.prt.portID, _buffer.prt.txReady, _buffer.prt.mode, _buffer.prt.baudRate,
+                     _buffer.prt.inProtoMask, _buffer.prt.outProtoMask,
+                     _buffer.prt.flags
+                );
 			}
             return false;
         case MSG_CFG_RATE:
@@ -861,6 +867,7 @@ AP_GPS_UBLOX::_parse_gps(void)
             next_fix = AP_GPS::NO_FIX;
             state.status = AP_GPS::NO_FIX;
         }
+
         if (!state.have_dgps && (_buffer.status.differential_status & 1)) {
             state.have_dgps = 1;
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "u-Blox %d: dgps became active",
@@ -870,6 +877,7 @@ AP_GPS_UBLOX::_parse_gps(void)
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "u-Blox %d: dgps signal lost",
                                              state.instance);
         }
+
 #if UBLOX_FAKE_3DLOCK
         state.status = AP_GPS::GPS_OK_FIX_3D;
         next_fix = state.status;
