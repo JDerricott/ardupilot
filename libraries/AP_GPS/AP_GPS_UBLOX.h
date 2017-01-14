@@ -519,7 +519,7 @@ private:
     bool noReceivedHdop;
 
     bool        _configure_message_rate(uint8_t msg_class, uint8_t msg_id, uint8_t rate);
-    void        _configure_protocols(void);
+    bool        _configure_protocols(void);
     void        _configure_rate(void);
     void        _configure_sbas(bool enable);
     void        _update_checksum(uint8_t *data, uint16_t len, uint8_t &ck_a, uint8_t &ck_b);
