@@ -172,6 +172,14 @@ private:
     };
     struct PACKED ubx_cfg_prt {
         uint8_t portID;
+        uint8_t reserved0;
+        uint16_t txReady;
+        uint32_t mode;
+        uint32_t baudRate;
+        uint16_t inProtoMask;
+        uint16_t outProtoMask;
+        uint16_t flags;
+        uint16_t reserved5;
     };
     struct PACKED ubx_cfg_sbas {
         uint8_t mode;
@@ -478,6 +486,7 @@ private:
 
     uint8_t         _class;
     bool            _cfg_saved;
+    bool            _protocols_configured;
 
     uint32_t        _last_vel_time;
     uint32_t        _last_pos_time;
@@ -510,6 +519,7 @@ private:
     bool noReceivedHdop;
 
     bool        _configure_message_rate(uint8_t msg_class, uint8_t msg_id, uint8_t rate);
+    void        _configure_protocols(void);
     void        _configure_rate(void);
     void        _configure_sbas(bool enable);
     void        _update_checksum(uint8_t *data, uint16_t len, uint8_t &ck_a, uint8_t &ck_b);
