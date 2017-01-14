@@ -125,6 +125,7 @@ public:
         bool have_speed_accuracy:1;
         bool have_horizontal_accuracy:1;
         bool have_vertical_accuracy:1;
+        bool have_dgps:1;
         uint32_t last_gps_time_ms;          ///< the system time we got the last GPS timestamp, milliseconds
     };
 

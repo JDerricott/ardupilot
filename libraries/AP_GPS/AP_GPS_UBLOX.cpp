@@ -861,6 +861,15 @@ AP_GPS_UBLOX::_parse_gps(void)
             next_fix = AP_GPS::NO_FIX;
             state.status = AP_GPS::NO_FIX;
         }
+        if (!state.have_dgps && (_buffer.status.differential_status & 1)) {
+            state.have_dgps = 1;
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "u-Blox %d: dgps became active",
+                                             state.instance);
+        } else if (state.have_dgps && ((_buffer.status.differential_status & 1) == 0)) {
+            state.have_dgps = 0;
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "u-Blox %d: dgps signal lost",
+                                             state.instance);
+        }
 #if UBLOX_FAKE_3DLOCK
         state.status = AP_GPS::GPS_OK_FIX_3D;
         next_fix = state.status;
