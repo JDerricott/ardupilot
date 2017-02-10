@@ -11,10 +11,27 @@ bool Copter::land_init(bool ignore_checks)
     // check if we have GPS and decide which LAND we're going to do
     land_with_gps = position_ok();
     if (land_with_gps) {
-        // set target to stopping point
-        Vector3f stopping_point;
-        wp_nav.get_loiter_stopping_point_xy(stopping_point);
-        wp_nav.init_loiter_target(stopping_point);
+        if (control_mode == GUIDED) {
+            // If we initiate landing from guided mode, we land at current position
+            // as we assume that guided mode initiates landing when UAV is at
+            // preferred landing position. This is necessary e.g. in multi-drone
+            // applications where no individual manual correction of landing
+            // position is possible and we have to rely on the automatic
+            // commands received from GCS or companion computer or common
+            // transmitter. Also, in critical situations, when e.g. the guided
+            // velocity controller has large velocity error and we initiate
+            // landing to prevent oscillations, loiter stopping point could
+            // give us a very distant target as it incorporates velocity error
+            // into the stopping distance calculation. It is better to stick to
+            // the current point, even though it needs more relaxation time when
+            // velocity is large.
+            wp_nav.init_loiter_target();
+        } else {
+            // Set target to stopping point
+            Vector3f stopping_point;
+            wp_nav.get_loiter_stopping_point_xy(stopping_point);
+            wp_nav.init_loiter_target(stopping_point);
+        }
     }
 
     // initialize vertical speeds and leash lengths
