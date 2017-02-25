@@ -56,7 +56,8 @@ public:
     enum xy_mode {
         XY_MODE_POS_ONLY = 0,           // position correction only (i.e. no velocity feed-forward)
         XY_MODE_POS_LIMITED_AND_VEL_FF, // for loiter - rate-limiting the position correction, velocity feed-forward
-        XY_MODE_POS_AND_VEL_FF          // for velocity controller - unlimied position correction, velocity feed-forward
+        XY_MODE_POS_AND_VEL_FF,         // for velocity controller - unlimied position correction, velocity feed-forward
+        XY_MODE_VEL_FF_ONLY             // for instantaneous velocity controller - no position correction, only velocity feed-forward
     };
 
     ///
@@ -269,7 +270,7 @@ public:
     ///     velocity targets should we set using set_desired_velocity_xyz() method
     ///     callers should use get_roll() and get_pitch() methods and sent to the attitude controller
     ///     throttle targets will be sent directly to the motors
-    void update_vel_controller_xyz(float ekfNavVelGainScaler);
+    void update_vel_controller_xyz(xy_mode mode, float ekfNavVelGainScaler);
 
     /// get desired roll, pitch which should be fed into stabilize controllers
     float get_roll() const { return _roll_target; }
@@ -341,7 +342,7 @@ private:
     ///
 
     /// desired_vel_to_pos - move position target using desired velocities
-    void desired_vel_to_pos(float nav_dt);
+    void desired_vel_to_pos(xy_mode mode, float nav_dt);
 
     /// pos_to_rate_xy - horizontal position error to velocity controller
     ///     converts position (_pos_target) to target velocity (_vel_target)

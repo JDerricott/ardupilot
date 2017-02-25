@@ -684,7 +684,7 @@ void AC_PosControl::update_xy_controller(xy_mode mode, float ekfNavVelGainScaler
     calc_leash_length_xy();
 
     // translate any adjustments from pilot to loiter target
-    desired_vel_to_pos(dt);
+    desired_vel_to_pos(mode, dt);
 
     // run position controller's position error to desired velocity step
     pos_to_rate_xy(mode, dt, ekfNavVelGainScaler);
@@ -736,7 +736,7 @@ void AC_PosControl::init_vel_controller_xyz()
 ///     velocity targets should we set using set_desired_velocity_xyz() method
 ///     callers should use get_roll() and get_pitch() methods and sent to the attitude controller
 ///     throttle targets will be sent directly to the motors
-void AC_PosControl::update_vel_controller_xyz(float ekfNavVelGainScaler)
+void AC_PosControl::update_vel_controller_xyz(xy_mode mode, float ekfNavVelGainScaler)
 {
     // capture time since last iteration
     uint32_t now = AP_HAL::millis();
@@ -756,10 +756,10 @@ void AC_PosControl::update_vel_controller_xyz(float ekfNavVelGainScaler)
         calc_leash_length_xy();
 
         // apply desired velocity request to position target
-        desired_vel_to_pos(dt);
+        desired_vel_to_pos(mode, dt);
 
         // run position controller's position error to desired velocity step
-        pos_to_rate_xy(XY_MODE_POS_LIMITED_AND_VEL_FF, dt, ekfNavVelGainScaler);
+        pos_to_rate_xy(mode, dt, ekfNavVelGainScaler);
 
         // run velocity to acceleration step
         rate_to_accel_xy(dt, ekfNavVelGainScaler);
@@ -798,7 +798,7 @@ void AC_PosControl::calc_leash_length_xy()
 }
 
 /// desired_vel_to_pos - move position target using desired velocities
-void AC_PosControl::desired_vel_to_pos(float nav_dt)
+void AC_PosControl::desired_vel_to_pos(xy_mode mode, float nav_dt)
 {
     // range check nav_dt
     if( nav_dt < 0 ) {
@@ -809,8 +809,16 @@ void AC_PosControl::desired_vel_to_pos(float nav_dt)
     if (_flags.reset_desired_vel_to_pos) {
         _flags.reset_desired_vel_to_pos = false;
     } else {
-        _pos_target.x += _vel_desired.x * nav_dt;
-        _pos_target.y += _vel_desired.y * nav_dt;
+        // If no position error is expected, we set origin of _pos_target to
+        // current position
+        if (mode == XY_MODE_VEL_FF_ONLY) {
+           Vector3f curr_pos = _inav.get_position();
+           _pos_target.x = curr_pos.x;
+           _pos_target.y = curr_pos.y;
+        } else {
+            _pos_target.x += _vel_desired.x * nav_dt;
+            _pos_target.y += _vel_desired.y * nav_dt;
+        }
     }
 }
 
@@ -859,10 +867,16 @@ void AC_PosControl::pos_to_rate_xy(xy_mode mode, float dt, float ekfNavVelGainSc
             _vel_target.y = kP * _pos_error.y;
         }
 
-        if (mode == XY_MODE_POS_LIMITED_AND_VEL_FF) {
-            // this mode is for loiter - rate-limiting the position correction
+        if (mode == XY_MODE_POS_LIMITED_AND_VEL_FF || mode == XY_MODE_VEL_FF_ONLY) {
+            // pos_limited mode is for loiter - rate-limiting the position correction
             // allows the pilot to always override the position correction in
             // the event of a disturbance
+
+            // no pos mode is for instantaneous velocity control, without
+            // correction from integrative position error. At this point we
+            // expect that _pos_error and thus _vel_target is zero, i.e. that
+            // desired_vel_to_pos() was also called with this mode.
+            // In this case, we will use only the actual _vel_desired as FF.
 
             // scale velocity within limit
             float vel_total = norm(_vel_target.x, _vel_target.y);
