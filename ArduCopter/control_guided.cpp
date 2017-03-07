@@ -465,8 +465,8 @@ void Copter::guided_vel_control_run()
     }
 
     // call velocity controller which includes z axis controller
-//    pos_control.update_vel_controller_xyz(AC_PosControl::XY_MODE_POS_LIMITED_AND_VEL_FF, ekfNavVelGainScaler); // original mode with limited integrated pos correction
-    pos_control.update_vel_controller_xyz(AC_PosControl::XY_MODE_VEL_FF_ONLY, ekfNavVelGainScaler);      // instantaneous velocity control mode without pos correction
+//    pos_control.update_vel_controller_xyz(ekfNavVelGainScaler); // original mode with limited integrated pos correction in xy and pos correction in z
+    pos_control.update_vel_controller_xyz(ekfNavVelGainScaler, AC_PosControl::XY_MODE_VEL_FF_ONLY, AC_PosControl::Z_MODE_VEL_FF_ONLY); // instantaneous velocity control mode without pos correction
 
     // call attitude controller
     if (auto_yaw_mode == AUTO_YAW_HOLD) {

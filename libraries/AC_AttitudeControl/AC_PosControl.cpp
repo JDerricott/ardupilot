@@ -183,7 +183,7 @@ void AC_PosControl::set_alt_target_from_climb_rate(float climb_rate_cms, float d
 ///     actual position target will be moved no faster than the speed_down and speed_up
 ///     target will also be stopped if the motors hit their limits or leash length is exceeded
 ///     set force_descend to true during landing to allow target to move low enough to slow the motors
-void AC_PosControl::set_alt_target_from_climb_rate_ff(float climb_rate_cms, float dt, bool force_descend)
+void AC_PosControl::set_alt_target_from_climb_rate_ff(float climb_rate_cms, float dt, bool force_descend, z_mode mode)
 {
     // calculated increased maximum acceleration if over speed
     float accel_z_cms = _accel_z_cms;
@@ -210,7 +210,14 @@ void AC_PosControl::set_alt_target_from_climb_rate_ff(float climb_rate_cms, floa
     // adjust desired alt if motors have not hit their limits
     // To-Do: add check of _limit.pos_down?
     if ((_vel_desired.z<0 && (!_motors.limit.throttle_lower || force_descend)) || (_vel_desired.z>0 && !_motors.limit.throttle_upper && !_limit.pos_up)) {
-        _pos_target.z += _vel_desired.z * dt;
+        // turn off position error compensation if we are in pure velocity
+        // feed forward control mode (should be used only with high speed
+        // external velocity z controller setting _vel_desired.z continuously
+        if (mode == Z_MODE_VEL_FF_ONLY) {
+            _pos_target.z = _inav.get_altitude();
+        } else {
+            _pos_target.z += _vel_desired.z * dt;
+        }
     }
 
     // do not let target alt get above limit
@@ -736,7 +743,8 @@ void AC_PosControl::init_vel_controller_xyz()
 ///     velocity targets should we set using set_desired_velocity_xyz() method
 ///     callers should use get_roll() and get_pitch() methods and sent to the attitude controller
 ///     throttle targets will be sent directly to the motors
-void AC_PosControl::update_vel_controller_xyz(xy_mode mode, float ekfNavVelGainScaler)
+void AC_PosControl::update_vel_controller_xyz(float ekfNavVelGainScaler,
+        xy_mode mode_xy, z_mode mode_z)
 {
     // capture time since last iteration
     uint32_t now = AP_HAL::millis();
@@ -756,10 +764,10 @@ void AC_PosControl::update_vel_controller_xyz(xy_mode mode, float ekfNavVelGainS
         calc_leash_length_xy();
 
         // apply desired velocity request to position target
-        desired_vel_to_pos(mode, dt);
+        desired_vel_to_pos(mode_xy, dt);
 
         // run position controller's position error to desired velocity step
-        pos_to_rate_xy(mode, dt, ekfNavVelGainScaler);
+        pos_to_rate_xy(mode_xy, dt, ekfNavVelGainScaler);
 
         // run velocity to acceleration step
         rate_to_accel_xy(dt, ekfNavVelGainScaler);
@@ -772,7 +780,7 @@ void AC_PosControl::update_vel_controller_xyz(xy_mode mode, float ekfNavVelGainS
     }
 
     // update altitude target
-    set_alt_target_from_climb_rate_ff(_vel_desired.z, _dt, false);
+    set_alt_target_from_climb_rate_ff(_vel_desired.z, _dt, false, mode_z);
 
     // run z-axis position controller
     update_z_controller();
@@ -809,7 +817,7 @@ void AC_PosControl::desired_vel_to_pos(xy_mode mode, float nav_dt)
     if (_flags.reset_desired_vel_to_pos) {
         _flags.reset_desired_vel_to_pos = false;
     } else {
-        // If no position error is expected, we set origin of _pos_target to
+        // If no position error correction is used, we set _pos_target to
         // current position
         if (mode == XY_MODE_VEL_FF_ONLY) {
            Vector3f curr_pos = _inav.get_position();

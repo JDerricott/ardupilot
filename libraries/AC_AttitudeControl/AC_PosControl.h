@@ -60,6 +60,13 @@ public:
         XY_MODE_VEL_FF_ONLY             // for instantaneous velocity controller - no position correction, only velocity feed-forward
     };
 
+    // z_mode - specifies behavior of z position controller
+    // TODO: so far introduced only for some special cases, so no all modes are needed, like in xy_mode
+    enum z_mode {
+        Z_MODE_POS_AND_VEL_FF = 0,     // for velocity controller - unlimied position correction, velocity feed-forward
+        Z_MODE_VEL_FF_ONLY             // for instantaneous velocity controller - no position correction, only velocity feed-forward; use this mode only if your external velocity z controller runs at high speed
+    };
+
     ///
     /// initialisation functions
     ///
@@ -128,7 +135,8 @@ public:
     ///     actual position target will be moved no faster than the speed_down and speed_up
     ///     target will also be stopped if the motors hit their limits or leash length is exceeded
     ///     set force_descend to true during landing to allow target to move low enough to slow the motors
-    void set_alt_target_from_climb_rate_ff(float climb_rate_cms, float dt, bool force_descend);
+    void set_alt_target_from_climb_rate_ff(float climb_rate_cms, float dt, bool force_descend,
+            z_mode mode=Z_MODE_POS_AND_VEL_FF);
 
     /// add_takeoff_climb_rate - adjusts alt target up or down using a climb rate in cm/s
     ///     should be called continuously (with dt set to be the expected time between calls)
@@ -270,7 +278,9 @@ public:
     ///     velocity targets should we set using set_desired_velocity_xyz() method
     ///     callers should use get_roll() and get_pitch() methods and sent to the attitude controller
     ///     throttle targets will be sent directly to the motors
-    void update_vel_controller_xyz(xy_mode mode, float ekfNavVelGainScaler);
+    void update_vel_controller_xyz(float ekfNavVelGainScaler,
+            xy_mode mode_xy=XY_MODE_POS_LIMITED_AND_VEL_FF,
+            z_mode mode_z=Z_MODE_POS_AND_VEL_FF);
 
     /// get desired roll, pitch which should be fed into stabilize controllers
     float get_roll() const { return _roll_target; }
