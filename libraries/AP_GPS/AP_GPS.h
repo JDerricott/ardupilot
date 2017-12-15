@@ -140,6 +140,7 @@ public:
         bool have_speed_accuracy:1;         ///< does GPS give speed accuracy? Set to true only once available.
         bool have_horizontal_accuracy:1;    ///< does GPS give horizontal position accuracy? Set to true only once available.
         bool have_vertical_accuracy:1;      ///< does GPS give vertical position accuracy? Set to true only once available.
+        bool have_dgps:1;                   ///< is DGPS currently active?
         uint32_t last_gps_time_ms;          ///< the system time we got the last GPS timestamp, milliseconds
     };
 

@@ -51,6 +51,7 @@ AP_GPS_UBLOX::AP_GPS_UBLOX(AP_GPS &_gps, AP_GPS::GPS_State &_state, AP_HAL::UART
     _payload_counter(0),
     _class(0),
     _cfg_saved(false),
+    _protocols_configured(false),
     _last_cfg_sent_time(0),
     _num_cfg_save_tries(0),
     _last_config_time(0),
@@ -779,8 +780,17 @@ AP_GPS_UBLOX::_parse_gps(void)
             }
             return false;
         case MSG_CFG_PRT:
-           _ublox_port = _buffer.prt.portID;
-           return false;
+            _ublox_port = _buffer.prt.portID;
+            if (!_protocols_configured) {
+                _configure_protocols();
+                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO,
+                     "u-blox %d CFG-PRT portID %d [r%d m%d b%d i%d o%d m%d]", state.instance,
+                     _buffer.prt.portID, _buffer.prt.txReady, _buffer.prt.mode, _buffer.prt.baudRate,
+                     _buffer.prt.inProtoMask, _buffer.prt.outProtoMask,
+                     _buffer.prt.flags
+                );
+            }
+            return false;
         case MSG_CFG_RATE:
             if(_buffer.nav_rate.measure_rate_ms != gps._rate_ms[state.instance] ||
                _buffer.nav_rate.nav_rate != 1 ||
@@ -888,6 +898,17 @@ AP_GPS_UBLOX::_parse_gps(void)
             next_fix = AP_GPS::NO_FIX;
             state.status = AP_GPS::NO_FIX;
         }
+
+        if (!state.have_dgps && (_buffer.status.differential_status & 1)) {
+            state.have_dgps = 1;
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "u-Blox %d: dgps became active",
+                                             state.instance);
+        } else if (state.have_dgps && ((_buffer.status.differential_status & 1) == 0)) {
+            state.have_dgps = 0;
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "u-Blox %d: dgps signal lost",
+                                             state.instance);
+        }
+
 #if UBLOX_FAKE_3DLOCK
         state.status = AP_GPS::GPS_OK_FIX_3D;
         next_fix = state.status;
@@ -1264,6 +1285,29 @@ void
 AP_GPS_UBLOX::_request_version(void)
 {
     _send_message(CLASS_MON, MSG_MON_VER, nullptr, 0);
+}
+
+bool
+AP_GPS_UBLOX::_configure_protocols(void)
+{
+    if (port->txspace() < (int16_t)(sizeof(struct ubx_header)+sizeof(struct ubx_cfg_prt)+2)) {
+        Debug("UBX: Not enough TXSPACE to configure RTCM protocol");
+        return false;
+    }
+
+    // precondition: _buffer holds a CFG-PRT message that we have just retrieved
+    if (_class != CLASS_CFG || _msg_id != MSG_CFG_PRT) {
+        Debug("UBX: precondition violation in _configure_protocols()");
+        return false;
+    }
+
+    struct ubx_cfg_prt msg = _buffer.prt;
+    msg.inProtoMask |= 5;         // allow RTCM and UBX messages
+    _send_message(CLASS_CFG, MSG_CFG_PRT, &msg, sizeof(msg));
+
+    _protocols_configured = true;
+
+    return true;
 }
 
 void
