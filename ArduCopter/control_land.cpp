@@ -25,12 +25,12 @@ bool Copter::land_init(bool ignore_checks)
             // into the stopping distance calculation. It is better to stick to
             // the current point, even though it needs more relaxation time when
             // velocity is large.
-            wp_nav.init_loiter_target();
+            wp_nav->init_loiter_target();
         } else {
             // Set target to stopping point
             Vector3f stopping_point;
-            wp_nav.get_loiter_stopping_point_xy(stopping_point);
-            wp_nav.init_loiter_target(stopping_point);
+            wp_nav->get_loiter_stopping_point_xy(stopping_point);
+            wp_nav->init_loiter_target(stopping_point);
         }
     }
 
