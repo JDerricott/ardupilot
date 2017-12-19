@@ -113,8 +113,8 @@ void Copter::guided_vel_control_start()
     // pos_control->set_speed_z(-g.pilot_velocity_z_max, g.pilot_velocity_z_max);
     // pos_control->set_accel_z(g.pilot_accel_z);
     // set vertical speed and acceleration for wpnav's speed and acceleration
-    pos_control.set_speed_z(wp_nav.get_speed_down(), wp_nav.get_speed_up());
-    pos_control.set_accel_z(wp_nav.get_accel_z());
+    pos_control->set_speed_z(wp_nav.get_speed_down(), wp_nav.get_speed_up());
+    pos_control->set_accel_z(wp_nav.get_accel_z());
 
     // initialise velocity controller
     pos_control->init_vel_controller_xyz();
